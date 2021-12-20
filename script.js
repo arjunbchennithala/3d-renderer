@@ -79,8 +79,7 @@ var rotateZ = [
 
 var orthoproject = [
         [1, 0, 0],
-        [0, 1, 0],
-        [0, 0, 1]
+        [0, 1, 0]
 ];
 
 var colors = ["blue", "red", "green", "orange"];
