@@ -1,37 +1,63 @@
 var canvas = document.getElementById("myCanvas");
 var ctx = canvas.getContext("2d");
 
-class vertex {
+const canvaswidth = 1200;
+const canvasheight = 800;
+
+
+
+class Vertex3D {
         constructor(x, y, z) {
-                this.location = [x, y, z];
+                this.x = x;
+                this.y = y;
+                this.z = z;
+        }
+}
+
+class Vertex2D {
+        constructor(x, y) {
+                this.x = x;
+                this.y = y;
+        }
+}
+
+class Cube {
+        constructor(x ,y, z, size) {
+                this.vertices = [
+                        new Vertex3D(x, y, z),
+                        new Vertex3D(x+size, y, z),
+                        new Vertex3D(x, y+size, z),
+                        new Vertex3D(x+size, y+size, z),
+
+                        new Vertex3D(x, y, z+size),
+                        new Vertex3D(x+size, y, z+size),
+                        new Vertex3D(x, y+size, z+size),
+                        new Vertex3D(x+size, y+size, z+size)
+                ];
         }
 }
 
 
-var canvaswidth = 1200;
-var canvasheight = 800;
 
-var x = 100;
-var y = 100;
-var width = 100;
-var height = 100;
-var width2 = 100;
-var zindex = 0;
+class Cube2d {
+        constructor(x, y) {
+                this.vertices = [
+                        new Vertex2D(x, y),
+                        new Vertex2D(x, y),
+                        new Vertex2D(x, y),
+                        new Vertex2D(x, y),
+
+                        new Vertex2D(x, y),
+                        new Vertex2D(x, y),
+                        new Vertex2D(x, y),
+                        new Vertex2D(x, y)
+                ];
+        }
+}
 
 
-var cube = [
-        new vertex(x, y, zindex),  //0 left top
-        new vertex(x, y+height, zindex),  //1 left bottom
-        new vertex(x+width, y, zindex),  //2 right top
-        new vertex(x+width, y+height, zindex),  //3 right bottom
+var angle = 0.025;
 
-        new vertex(x, y, zindex+width2), //4 left top
-        new vertex(x, y+height, zindex + width2), //5 left bottom 
-        new vertex(x+width, y, zindex + width2), //6 right top
-        new vertex(x+width, y+height, zindex + width2)  //7 right bottom
-];
-
-var angle = 0.01;
 
 var rotateX = [
         [1, 0, 0],
@@ -53,94 +79,134 @@ var rotateZ = [
 
 var orthoproject = [
         [1, 0, 0],
-        [0, 1, 0]
+        [0, 1, 0],
+        [0, 0, 1]
 ];
 
-function matmul(a, b) {
-        var sum ;
-        var rowA = a.length;
-        var colB = b[0].length;
-        var colA = a[0].length;
-        var rowB = b.length;
+var colors = ["blue", "red", "green", "orange"];
 
-
-        if(colA != rowB) {
-                console.log("Number of columns in first array and number of rows in second array are different.");
-                return null;
-        }
-
-        colB = (colB == undefined) ? 1 : colB;
-
-        var mul = new Array(rowA).fill(0).map(() => new Array(colB).fill(0));
-       
-        for(var i=0; i<rowA; i++) {
-                for(var j=0; j<colB; j++) {
-                        sum = 0;
-                        for(var k=0; k<colA; k++) {
-                                if(colB < 2)
-                                        sum += a[i][k] * b[k];
-                                else
-                                        sum += a[i][k] * b[k][j];
+function mul3d(a, b) {
+        var sum = 0;
+        var vertexx = new Vertex3D(0, 0, 0);
+        for(var i=0; i<a.length; i++) {
+                sum = 0;
+                for(var j=0; j<3;j++) {
+                        if(j==0) {
+                                sum += a[i][j] * b.x;
+                        }else if(j==1){
+                                sum += a[i][j] * b.y;
+                        }else if(j==2){
+                                sum += a[i][j] * b.z;
                         }
-                        mul[i][j] = sum;
+                }
+                if(i==0) {
+                        vertexx.x = sum;
+                }else if(i==1){
+                        vertexx.y = sum;
+                }else if(i==2){
+                        vertexx.z = sum;
                 }
         }
-        return mul;
+        return vertexx;
 }
 
-
-function animate() {
-        for(var i=0; i<8; i++) {
-               var rotated = matmul(rotateX, cube[i].location);
-               rotated = matmul(rotateY, rotated);
-               //rotated = matmul(rotateZ, rotated);
-
-               cube[i].location = rotated;
+function mul2d(a, b) {
+        var sum = 0;
+        var vertexx = new Vertex2D(0,0);
+        for(var i=0; i<a.length; i++) {
+                sum = 0;
+                for(var j=0; j<3; j++) {
+                        if(j==0) {
+                                sum += a[i][j] * b.x;
+                        }else if(j==1){
+                                sum += a[i][j] * b.y;
+                        }else if(j==2){
+                                sum += a[i][j] * b.z;
+                        }
+                }
+                if(i==0) {
+                        vertexx.x = sum;
+                }else if(i==1){
+                        vertexx.y = sum;
+                }
         }
-        
-        ctx.clearRect(0, 0, canvaswidth, canvasheight );
-        var colors = ["red", "blue", "green", "orange"];
-        var projected;
-        for(var i=0; i<8; i++) {
+        return vertexx;
+}
+
+function orthoprojection() {   
+        ctx.clearRect(0, 0, canvaswidth, canvasheight);
+        for(var i=0; i<cube.vertices.length; i++) {
                 ctx.beginPath();
-                projected = matmul(orthoproject, cube[i].location);
-                ctx.arc(projected[0], projected[1], 6, 0, Math.PI * 2, true);
+                cube2d.vertices[i] = mul2d(orthoproject, cube.vertices[i]);
+                ctx.arc(cube2d.vertices[i].x, cube2d.vertices[i].y, 6, 0, Math.PI * 2);
                 ctx.fillStyle = colors[i%4];
                 ctx.fill();
         }
-
-        ctx.beginPath();
-        ctx.moveTo(cube[0].location[0], cube[0].location[1]);
-        ctx.lineTo(cube[1].location[0], cube[1].location[1]);
-        ctx.lineTo(cube[3].location[0], cube[3].location[1]);
-        ctx.lineTo(cube[2].location[0], cube[2].location[1]);
-        ctx.lineTo(cube[0].location[0], cube[0].location[1]);
+        
+}
 
 
-        ctx.moveTo(cube[4].location[0], cube[4].location[1]);
-        ctx.lineTo(cube[5].location[0], cube[5].location[1]);
-        ctx.lineTo(cube[7].location[0], cube[7].location[1]);
-        ctx.lineTo(cube[6].location[0], cube[6].location[1]);
-        ctx.lineTo(cube[4].location[0], cube[4].location[1]);
 
-        ctx.moveTo(cube[0].location[0], cube[0].location[1]);
-        ctx.lineTo(cube[4].location[0], cube[4].location[1]);
+function perspectivprojection() {
+        ctx.clearRect(0, 0, canvaswidth, canvasheight);
+        var distance = 100;
+        for(var i=0; i<8;i++) {
+                ctx.beginPath();
+                var z = 1 / (distance - cube.vertices[i].z);
+                var perspectiveproject = [
+                        [z, 0, 0],
+                        [0, z, 0]
+                ]
+                cube2d.vertices[i] = mul2d(perspectiveproject, cube.vertices[i]);
+                ctx.arc(cube2d.vertices[i].x, cube2d.vertices[i].y, 6, 0, Math.PI * 2, true );
+                ctx.fillStyle = colors[i%4];
+                ctx.fill();
 
-        ctx.moveTo(cube[1].location[0], cube[1].location[1]);
-        ctx.lineTo(cube[5].location[0], cube[5].location[1]);
+        }
+}
 
-        ctx.moveTo(cube[2].location[0], cube[2].location[1]);
-        ctx.lineTo(cube[6].location[0], cube[6].location[1]);
+function drawlines() {
+        ctx.moveTo(cube2d.vertices[0].x, cube2d.vertices[0].y);
+        ctx.lineTo(cube2d.vertices[1].x, cube2d.vertices[1].y);
+        ctx.lineTo(cube2d.vertices[3].x, cube2d.vertices[3].y);
+        ctx.lineTo(cube2d.vertices[2].x, cube2d.vertices[2].y);
+        ctx.lineTo(cube2d.vertices[0].x, cube2d.vertices[0].y);
 
-        ctx.moveTo(cube[3].location[0], cube[3].location[1]);
-        ctx.lineTo(cube[7].location[0], cube[7].location[1]);
+        ctx.fill();
+
+        ctx.lineTo(cube2d.vertices[4].x, cube2d.vertices[4].y);
+        ctx.lineTo(cube2d.vertices[6].x, cube2d.vertices[6].y);
+        ctx.lineTo(cube2d.vertices[7].x, cube2d.vertices[7].y);
+        ctx.lineTo(cube2d.vertices[5].x, cube2d.vertices[5].y);
+        ctx.lineTo(cube2d.vertices[4].x, cube2d.vertices[4].y);
+        ctx.lineTo(cube2d.vertices[6].x, cube2d.vertices[6].y);
+        ctx.lineTo(cube2d.vertices[2].x, cube2d.vertices[2].y);
+        ctx.moveTo(cube2d.vertices[1].x, cube2d.vertices[1].y);
+        ctx.lineTo(cube2d.vertices[5].x, cube2d.vertices[5].y);
+        ctx.moveTo(cube2d.vertices[3].x, cube2d.vertices[3].y);
+        ctx.lineTo(cube2d.vertices[7].x, cube2d.vertices[7].y);
 
         ctx.stroke();
+}
 
-        setTimeout(animate, 10);
+var cube = new Cube(300, 300 , 5, 100);
+
+var cube2d = new Cube2d(0,0);
+
+function animate() {
+        for(var i=0; i<cube.vertices.length;i++) {
+                //cube.vertices[i] = mul3d(rotateZ, cube.vertices[i]);
+                cube.vertices[i] = mul3d(rotateY, cube.vertices[i]);
+                cube.vertices[i] = mul3d(rotateX, cube.vertices[i]);
+        }
+        orthoprojection();
+        drawlines();
+        //perspectivprojection(cube);
+        setTimeout(animate, 20);
 }
 
 animate();
+
 
 
 
